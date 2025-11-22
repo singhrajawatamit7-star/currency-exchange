@@ -1,0 +1,96 @@
+import requests
+# If 'requests' is not installed in your environment, install it from the terminal:
+# pip install requests
+def get_exchange_rates(api_key, base_currency="USD"):
+    """
+    Fetches the latest exchange rates for a base currency from the API.
+
+    Args:
+        api_key (str): Your API key for ExchangeRate-API.
+        base_currency (str): The currency code to use as the base (e.g., "USD", "EUR").
+
+    Returns:
+        dict: A dictionary of exchange rates, or None if the request fails.
+    """
+    url = f"https://v6.exchangerate-api.com/v6/{api_key}/latest/{base_currency}"
+    try:
+        response = requests.get(url)
+        # Raise an exception for bad status codes (4xx or 5xx)
+        response.raise_for_status()
+
+        data = response.json()
+        
+        # Check if the API call was successful
+        if data.get("result") == "success":
+            return data.get("conversion_rates")
+        else:
+            print(f"API Error: {data.get('error-type', 'Unknown error')}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred during the API request: {e}")
+        return None
+
+def convert_currency(amount, from_currency, to_currency, rates):
+    """
+    Converts an amount from one currency to another using the fetched rates.
+
+    Args:
+        amount (float): The amount to convert.
+        from_currency (str): The source currency code.
+        to_currency (str): The target currency code.
+        rates (dict): The dictionary of exchange rates with the base currency being `from_currency`.
+
+    Returns:
+        float: The converted amount, or None if a currency rate is missing.
+    """
+    if not rates:
+        return None
+
+    # Check if the target currency rate is available
+    if to_currency in rates:
+        exchange_rate = rates[to_currency]
+        converted_amount = amount * exchange_rate
+        return converted_amount
+    else:
+        print(f"Error: Rate for {to_currency} not found in the fetched rates.")
+        return None
+
+# --- Main Program Execution ---
+if __name__ == "__main__":
+    # ⚠️ IMPORTANT: Replace "YOUR_API_KEY" with your actual ExchangeRate-API key
+    API_KEY = "YOUR_API_KEY" 
+
+    # 1. Get user input
+    try:
+        amount_to_convert = float(input("Enter the amount to convert: "))
+        from_currency_code = input("Enter the source currency code (e.g., USD, EUR): ").upper()
+        to_currency_code = input("Enter the target currency code (e.g., GBP, JPY): ").upper()
+    except ValueError:
+        print("Invalid amount entered. Please enter a number.")
+        exit()
+
+    # 2. Fetch the rates
+    print(f"\nFetching real-time exchange rates for {from_currency_code}...")
+    exchange_rates = get_exchange_rates(API_KEY, from_currency_code)
+
+    if exchange_rates:
+        # 3. Perform the conversion
+        converted_result = convert_currency(
+            amount_to_convert,
+            from_currency_code,
+            to_currency_code,
+            exchange_rates
+        )
+
+        # 4. Display the result
+        if converted_result is not None:
+            print(f"\n--- Conversion Result ---")
+            print(f"Amount: {amount_to_convert:.2f} {from_currency_code}")
+            print(f"Rate ({from_currency_code} to {to_currency_code}): {exchange_rates[to_currency_code]:.4f}")
+            print(f"Converted Amount: {converted_result:.2f} {to_currency_code}")
+            print("-------------------------")
+        else:
+            print("\nConversion failed due to a missing exchange rate.")
+    else:
+        print("\nCould not fetch exchange rates. Please check your API key, internet connection, and currency codes.")
